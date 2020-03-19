@@ -1,8 +1,14 @@
+#include <chrono>
 #include <cmath>
 #include <ctime>
 #include <iostream>
+#include <thread>
 #include <vector>
 
+#include "Hue.h"
+#include "LinHttpHandler.h"
+
+using namespace std::chrono_literals;
 typedef float real;
 
 struct gradient_point {
@@ -28,11 +34,25 @@ std::ostream& operator<<(std::ostream& os, const gradient_point& p) {
   return os;
 }
 
+// 2000K just before/after sun-rise/set
+// 3000-3500K sunset on horizon
+// 4500-5000K early morning/late afternoon
+// 5600K default daylight
+// May in Munich:
+//
+// "Night time" = 22 - 7
+// "Morning" = 7 - 10
+// "Day" = 10 - 16
+// "Evening" = 16 - 20
 std::vector<gradient_point> schedule = {
-    {8.0, 2500.0, 0.1},
-    {12.0, 6500.0, 1.0},
-    {18.0, 6500.0, 0.8},
-    {20.0, 1500.0, 0.4},
+    {1.0, 2000.0, 0.1},   // Solar Midnight
+    {6.0, 2000.0, 0.5},   // Dawn
+    {8.0, 3500.0, 0.7},   // Sunrise
+    {9.0, 5000.0, 0.9},   // Morning
+    {13.0, 6500.0, 1.0},  // Solar Noon
+    {20.0, 4500.0, 0.8},  // Evening
+    {22.0, 3000.0, 0.6},  // Sunset
+    {23.0, 2000.0, 0.1},  // Dusk
 };
 
 gradient_point lerp(real t) {
@@ -67,14 +87,36 @@ gradient_point lerp(real t) {
   return ans;
 }
 
-int main() { /*
-   for (real t = 0; t < 30; t += 0.1) {
-     std::cout << lerp(t) << std::endl;
-   }*/
+Hue getBridge() {
+  auto http_handler = std::make_shared<LinHttpHandler>();
+  HueFinder finder = {http_handler};
+  std::vector<HueFinder::HueIdentification> bridges = finder.FindBridges();
+  if (bridges.empty()) {
+    std::cout << "No bridges found!" << std::endl;
+    exit(1);
+  }
 
-  std::time_t t = std::time(nullptr);
+  finder.AddUsername(bridges[0].mac, "XcS8Uvp0dhCOV6RjKO3aLlarx73lXo1Gt4PxfWLU");
 
-  auto* tm = std::localtime(&t);
-  real day_hour = tm->tm_hour + tm->tm_min / 60.0;
-  std::cout << lerp(day_hour) << std::endl;
+  return finder.GetBridge(bridges[0]);
+}
+
+int main() {
+  auto bridge = getBridge();
+
+  while (true) {
+    std::time_t t = std::time(nullptr);
+    auto* tm = std::localtime(&t);
+    real day_hour = tm->tm_hour + tm->tm_min / 60.0;
+    auto s = lerp(day_hour);
+
+    for (auto& light_ref : bridge.getAllLights()) {
+      auto& light = light_ref.get();
+      if (light.isOn()) {
+        light.setBrightness(254 * s.lum);
+        light.setColorTemperature(light.KelvinToMired(s.ct));
+      }
+    }
+    std::this_thread::sleep_for(5s);
+  }
 }
