@@ -16,9 +16,10 @@ $ cd photon-hue/build
 $ cmake ..
 $ make
 $ sudo make install
+$ sudo adduser --system --group --shell /bin/nologin --no-create-home photon-hue
 ```
 
-If you want to uninstall, just replace `install` in the last line with `uninstall`. Keep the source and build files around if you used a different install prefix.
+If you want to uninstall, just replace `install` in the last line with `uninstall` and remove the `photon-hue` group and user using the normal tools. Keep the source and build files around if you used a different install prefix.
 
 Then we need to configure it with an API key (username) from the hub and optionally specifiy the MAC address of the bridge if there are several bridges. Do this by running the application once, and note the MAC and user name outputted:
 
