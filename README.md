@@ -7,7 +7,7 @@ Previous attempts to use off-the-shelf software proved to have issues with scene
 
 ## Installing
 
-First we build and install it to the system (make sure you have cmake and a C++17 capable compiler installed):
+First we build and install it to the system (make sure you have cmake and a C++14 capable compiler installed):
 
 ```
 $ git clone --recurse-submodules https://github.com/EmilyBjoerk/photon-hue.git
