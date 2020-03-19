@@ -5,8 +5,8 @@ After=network.target wpa_supplicant.service
  
 [Service]
 Type=simple
-User=nobody
-Group=nobody
+User=photon-hue
+Group=photon-hue
 
 Restart=always
 RestartSec=10
