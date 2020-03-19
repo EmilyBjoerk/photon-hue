@@ -1,0 +1,18 @@
+[Unit]
+Description=Photon Hue
+ConditionPathExists=@CMAKE_INSTALL_PREFIX@/bin/@SERVICE_LAUNCHER@
+After=network.target wpa_supplicant.service
+ 
+[Service]
+Type=simple
+User=nobody
+Group=nobody
+
+Restart=always
+RestartSec=10
+StartLimitInterval=60s
+
+ExecStart=@CMAKE_INSTALL_PREFIX@/bin/@SERVICE_LAUNCHER@
+ 
+[Install]
+WantedBy=multi-user.target
