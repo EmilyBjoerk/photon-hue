@@ -1,39 +1,16 @@
 #include <chrono>
-#include <cmath>
 #include <cstdlib>
 #include <ctime>
-#include <iostream>
 #include <thread>
 #include <vector>
 
 #include "Hue.h"
 #include "LinHttpHandler.h"
+#include "schedule.h"
 
 using namespace std::chrono_literals;
-typedef float real;
 
-struct gradient_point {
-  real day_hour;
-  real ct;
-  real lum;
-};
-
-gradient_point operator+(const gradient_point& l, const gradient_point& r) {
-  return {l.day_hour + r.day_hour, l.ct + r.ct, l.lum + r.lum};
-}
-
-gradient_point operator-(const gradient_point& l, const gradient_point& r) {
-  return {l.day_hour - r.day_hour, l.ct - r.ct, l.lum - r.lum};
-}
-
-gradient_point operator*(const gradient_point& l, real r) {
-  return {l.day_hour * r, l.ct * r, l.lum * r};
-}
-
-std::ostream& operator<<(std::ostream& os, const gradient_point& p) {
-  os << p.day_hour << ", " << p.ct << ", " << p.lum;
-  return os;
-}
+constexpr auto c_max_brightness = 254;
 
 // For reference
 // 2000K just before/after sun-rise/set
@@ -42,7 +19,7 @@ std::ostream& operator<<(std::ostream& os, const gradient_point& p) {
 // 5600K default daylight
 
 // May in Munich:
-std::vector<gradient_point> schedule = {
+std::vector<schedule_point> schedule = {
     {1.0, 2000.0, 0.1},   // Solar Midnig
     {6.0, 2000.0, 0.5},   // Dawn
     {8.0, 3500.0, 0.7},   // Sunrise
@@ -53,69 +30,60 @@ std::vector<gradient_point> schedule = {
     {23.0, 2000.0, 0.1},  // Dusk
 };
 
-gradient_point lerp(real t) {
-  auto t0 = std::fmod(t, 24.0);
-  auto it = schedule.begin();
-  while (it != schedule.end() && t0 > it->day_hour) {
-    it++;
-  }
+auto find_bridge_id(HueFinder& finder) {
+  const auto bridge_mac = getenv("HUE_MAC");
 
-  gradient_point next, prev;
-  if (it == schedule.end()) {
-    // Past the end of the schedule until 24:00
-    it = schedule.begin();
-    next = *it;
-    prev = *(it - 1);
-    next.day_hour += 24.0;
-  } else if (it == schedule.begin()) {
-    // Before the start of the schedule from 00:00
-    next = *it;
-    prev = *(schedule.end() - 1);
-    next.day_hour += 24.0;
-    t0 += 24.0;
-  } else {
-    // Within schedule
-    next = *it;
-    prev = *(it - 1);
-  }
+  while (true) {
+    auto bridges = finder.FindBridges();
+    for (auto& b : bridges) {
+      if (bridge_mac) {
+        if (b.mac == HueFinder::NormalizeMac(bridge_mac)) {
+          std::cout << "Found specified bridge with MAC: " << bridge_mac << std::endl;
+          return b;
+        }
+      } else {
+        std::cout << "HUE_MAC unspecified, chosing: " << b.mac << std::endl;
+        return b;
+      }
+    }
 
-  auto dt = (t0 - prev.day_hour) / (next.day_hour - prev.day_hour);
-  auto ans = prev + (next - prev) * dt;
-  ans.day_hour = std::fmod(ans.day_hour, 24.0);
-  return ans;
+    if (bridge_mac) {
+      std::cout << "Didn't find sought bridge with MAC: " << bridge_mac << std::endl;
+    } else {
+      std::cout << "No bridges found!" << std::endl;
+    }
+    std::this_thread::sleep_for(10s);
+  }
 }
 
-Hue getBridge() {
-  auto http_handler = std::make_shared<LinHttpHandler>();
-  HueFinder finder = {http_handler};
-  std::vector<HueFinder::HueIdentification> bridges = finder.FindBridges();
-  if (bridges.empty()) {
-    std::cout << "No bridges found!" << std::endl;
-    exit(1);
-  }
+auto find_bridge() {
+  const auto bridge_user = getenv("HUE_APIKEY");
+  auto finder = HueFinder{std::make_shared<LinHttpHandler>()};
+  auto bridge_id = find_bridge_id(finder);
 
-  auto username = getenv("HUE_APIKEY");
-  if (username) {
-    finder.AddUsername(bridges[0].mac, username);
+  if (bridge_user) {
+    std::cout << "HUE_APIKEY specified, using API key..." << std::endl;
+    finder.AddUsername(bridge_id.mac, bridge_user);
+  } else {
+    std::cout << "HUE_APIKEY not specified, requesting new API key..." << std::endl;
   }
-
-  return finder.GetBridge(bridges[0]);
+  return finder.GetBridge(bridge_id);
 }
 
 int main() {
-  auto bridge = getBridge();
+  auto bridge = find_bridge();
 
   while (true) {
-    std::time_t t = std::time(nullptr);
+    auto t = std::time(nullptr);
     auto* tm = std::localtime(&t);
-    real day_hour = tm->tm_hour + tm->tm_min / 60.0;
-    auto s = lerp(day_hour);
+    auto day_hour = tm->tm_hour + tm->tm_min / real{60};
+    auto point = schedule_lerp(schedule, day_hour);
 
     for (auto& light_ref : bridge.getAllLights()) {
       auto& light = light_ref.get();
       if (light.isOn()) {
-        light.setBrightness(254 * s.lum);
-        light.setColorTemperature(light.KelvinToMired(s.ct));
+        light.setBrightness(c_max_brightness * point.lum);
+        light.setColorTemperature(light.KelvinToMired(point.ct));
       }
     }
     std::this_thread::sleep_for(5s);
