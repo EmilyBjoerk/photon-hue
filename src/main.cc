@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <ctime>
 #include <iostream>
 #include <thread>
@@ -34,18 +35,15 @@ std::ostream& operator<<(std::ostream& os, const gradient_point& p) {
   return os;
 }
 
+// For reference
 // 2000K just before/after sun-rise/set
 // 3000-3500K sunset on horizon
 // 4500-5000K early morning/late afternoon
 // 5600K default daylight
+
 // May in Munich:
-//
-// "Night time" = 22 - 7
-// "Morning" = 7 - 10
-// "Day" = 10 - 16
-// "Evening" = 16 - 20
 std::vector<gradient_point> schedule = {
-    {1.0, 2000.0, 0.1},   // Solar Midnight
+    {1.0, 2000.0, 0.1},   // Solar Midnig
     {6.0, 2000.0, 0.5},   // Dawn
     {8.0, 3500.0, 0.7},   // Sunrise
     {9.0, 5000.0, 0.9},   // Morning
@@ -96,6 +94,10 @@ Hue getBridge() {
     exit(1);
   }
 
+  auto username = getenv("HUE_APIKEY");
+  if (username) {
+    finder.AddUsername(bridges[0].mac, username);
+  }
 
   return finder.GetBridge(bridges[0]);
 }
