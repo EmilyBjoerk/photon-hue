@@ -17,7 +17,7 @@ set(INC_PATH     "${BASE_PATH}/include")
 set(SRC_PATH     "${BASE_PATH}/src")
 file(GLOB SRC_FILES "${SRC_PATH}/*.cc")
 
-add_subdirectory(hueplusplus/hueplusplus)
+add_subdirectory(hueplusplus)
 
 include_directories(${INC_PATH})
 add_executable(${PROJECT_NAME} ${SRC_FILES})
