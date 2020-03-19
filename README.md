@@ -14,8 +14,11 @@ $ git clone --recurse-submodules https://github.com/EmilyBjoerk/photon-hue.git
 $ mkdir photon-hue/build
 $ cd photon-hue/build
 $ cmake ..
+$ make
 $ sudo make install
 ```
+
+If you want to uninstall, just replace `install` in the last line with `uninstall`. Keep the source and build files around if you used a different install prefix.
 
 Then we need to configure it with an API key (username) from the hub and optionally specifiy the MAC address of the bridge if there are several bridges. Do this by running the application once, and note the MAC and user name outputted:
 
@@ -29,7 +32,7 @@ Now fill in the user name from the above (and optionally the MAC):
 $ sudo -e /usr/local/bin/photon-hue-service
 ```
 
-Finally, make `photon-hue` start automatically on boot:
+Finally, make `photon-hue` start automatically on boot, start it now, and verify its status:
 
 ```
 $ sudo systemctl enable photon-hue
@@ -45,7 +48,7 @@ $ sudo journalctl -fu photon-hue.service
 
 ## Specifying API key and MAC address
 
-The service will read the API key and MAC address of the bridge from the environment (because I lazy). `photon-hue-service` is a launcher script that sets the environment variables for you. If you launch the `photon-hue` binary without having set any of the environment variables it will connect to the first bridge that it can find and then then request a new API key from it and print it to standard output. The MAC address can be specified if you want to connect to a specific bridge, but is not needed if you only have one bridge on your LAN.
+The service will read the API key and MAC address of the bridge from the environment (because I lazy). `photon-hue-service` is a launcher script that sets the environment variables for you. If you launch the `photon-hue` binary without having set any of the environment variables it will connect to the first bridge that it can find and then request a new API key from it and print it to the standard output. The MAC address can be specified if you want to connect to a specific bridge, but is not needed if you only have one bridge on your LAN.
 
 Launching `photon-hue` with the parameters set on the command line:
 
