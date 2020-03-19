@@ -96,7 +96,6 @@ Hue getBridge() {
     exit(1);
   }
 
-  finder.AddUsername(bridges[0].mac, "XcS8Uvp0dhCOV6RjKO3aLlarx73lXo1Gt4PxfWLU");
 
   return finder.GetBridge(bridges[0]);
 }
