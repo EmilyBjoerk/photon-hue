@@ -1,0 +1,3 @@
+[submodule "hueplusplus"]
+	path = hueplusplus
+	url = git@github.com:EmilyBjoerk/hueplusplus
