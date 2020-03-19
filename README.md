@@ -41,3 +41,18 @@ To view the logs you can use `journaltcl`:
 ```
 $ sudo journalctl -fu photon-hue.service
 ```
+
+
+## Specifying API key and MAC address
+
+The service will read the API key and MAC address of the bridge from the environment (because I lazy). `photon-hue-service` is a launcher script that sets the environment variables for you. If you launch the `photon-hue` binary without having set any of the environment variables it will connect to the first bridge that it can find and then then request a new API key from it and print it to standard output. The MAC address can be specified if you want to connect to a specific bridge, but is not needed if you only have one bridge on your LAN.
+
+Launching `photon-hue` with the parameters set on the command line:
+
+```
+HUE_MAC=00:00:00:00:00 HUE_APIKEY=0123456789ABCDEFGH photon-hue
+```
+
+## Customizing the schedule
+
+See the schedule global in `main.cpp`. I'm too lazy to add config parsing, just edit the source and rebuild and re-install.
