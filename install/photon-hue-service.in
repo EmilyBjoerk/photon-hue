@@ -1,7 +1,0 @@
-#!/usr/bin/env sh
-
-# MAC is optional
-export HUE_MAC=FillMeIn
-export HUE_APIKEY=FillMeIn
-
-@CMAKE_INSTALL_PREFIX@/bin/@PROJECT_NAME@
