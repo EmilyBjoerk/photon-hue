@@ -20,7 +20,7 @@ constexpr auto c_max_brightness = 254;
 
 // May in Munich:
 std::vector<schedule_point> schedule = {
-    {1.0, 2000.0, 0.1},   // Solar Midnig
+    {1.0, 2000.0, 0.1},   // Solar Midnight
     {6.0, 2000.0, 0.5},   // Dawn
     {8.0, 3500.0, 0.7},   // Sunrise
     {9.0, 5000.0, 0.9},   // Morning
@@ -48,7 +48,7 @@ auto find_bridge_id(HueFinder& finder) {
     }
 
     if (bridge_mac) {
-      std::cout << "Didn't find sought bridge with MAC: " << bridge_mac << std::endl;
+      std::cout << "Didn't find specified bridge with MAC: " << bridge_mac << std::endl;
     } else {
       std::cout << "No bridges found!" << std::endl;
     }
