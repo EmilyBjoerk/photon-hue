@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+export HUE_MAC=0017886f27e1
+export HUE_APIKEY=pLbyAl76qwOrL3rlsHdNkZDI99wo3qLxV-CABRwj
+/usr/local/bin/photon-hue

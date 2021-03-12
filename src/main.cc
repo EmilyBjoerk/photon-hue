@@ -1,14 +1,17 @@
 #include <chrono>
-#include <cstdlib>
-#include <ctime>
 #include <thread>
 #include <vector>
 
-#include "Hue.h"
-#include "LinHttpHandler.h"
+#include "hueplusplus/Bridge.h"
+#include "hueplusplus/ColorUnits.h"
+#include "hueplusplus/LinHttpHandler.h"
 #include "schedule.h"
 
 using namespace std::chrono_literals;
+
+using hueplusplus::BridgeFinder;
+using hueplusplus::kelvinToMired;
+using hueplusplus::LinHttpHandler;
 
 constexpr auto c_max_brightness = 254;
 
@@ -17,9 +20,8 @@ constexpr auto c_max_brightness = 254;
 // 3000-3500K sunset on horizon
 // 4500-5000K early morning/late afternoon
 // 5600K default daylight
-
-// May in Munich:
-std::vector<schedule_point> schedule = {
+const std::vector<schedule_point> schedule = {
+    // {day_hour, colour_temperature, brightness}
     {1.0, 2000.0, 0.1},   // Solar Midnight
     {6.0, 2000.0, 0.5},   // Dawn
     {8.0, 3500.0, 0.7},   // Sunrise
@@ -30,14 +32,18 @@ std::vector<schedule_point> schedule = {
     {23.0, 2000.0, 0.1},  // Dusk
 };
 
-auto find_bridge_id(HueFinder& finder) {
+const std::vector<schedule_override> sched_ovr = {
+    // {day_hour_from, day_hour_to, light_id, colour_temperature, brightness}
+    {19, 6, 4, 2700, 1.0}};
+
+auto find_bridge_id(BridgeFinder& finder) {
   const auto bridge_mac = getenv("HUE_MAC");
 
   while (true) {
-    auto bridges = finder.FindBridges();
+    auto bridges = finder.findBridges();
     for (auto& b : bridges) {
       if (bridge_mac) {
-        if (b.mac == HueFinder::NormalizeMac(bridge_mac)) {
+        if (b.mac == BridgeFinder::normalizeMac(bridge_mac)) {
           std::cout << "Found specified bridge with MAC: " << bridge_mac << std::endl;
           return b;
         }
@@ -58,38 +64,39 @@ auto find_bridge_id(HueFinder& finder) {
 
 auto find_bridge() {
   const auto bridge_user = getenv("HUE_APIKEY");
-  auto finder = HueFinder{std::make_shared<LinHttpHandler>()};
+  auto finder = BridgeFinder{std::make_shared<LinHttpHandler>()};
   auto bridge_id = find_bridge_id(finder);
 
   if (bridge_user) {
     std::cout << "HUE_APIKEY specified, using API key..." << std::endl;
-    finder.AddUsername(bridge_id.mac, bridge_user);
+    finder.addUsername(bridge_id.mac, bridge_user);
   } else {
     std::cout << "HUE_APIKEY not specified, requesting new API key..." << std::endl;
   }
-  return finder.GetBridge(bridge_id);
+  return finder.getBridge(bridge_id);
 }
 
 int main() {
   auto bridge = find_bridge();
+  std::cout << "Bridge connected!" << std::endl;
+  auto& lights = bridge.lights();
+  lights.setRefreshDuration(3s);
 
   while (true) {
     try {
-      auto t = std::time(nullptr);
-      auto* tm = std::localtime(&t);
-      auto day_hour = tm->tm_hour + tm->tm_min / real{60};
-      auto point = schedule_lerp(schedule, day_hour);
-
-      for (auto& light_ref : bridge.getAllLights()) {
-	auto& light = light_ref.get();
-	if (light.isOn()) {
-	  light.setBrightness(c_max_brightness * point.lum);
-	  light.setColorTemperature(light.KelvinToMired(point.ct));
-	}
+      std::this_thread::sleep_for(1s);
+      for (auto& light : lights.getAll()) {
+        if (light.isOn()) {
+          auto point = schedule_now(schedule, sched_ovr, light.getId());
+          light
+              .transaction()                                 //
+              .setBrightness(c_max_brightness * point.lum)   //
+              .setColorTemperature(kelvinToMired(point.ct))  //
+              .commit();
+        }
       }
-    } catch (const std::system_error& err){
-      std::cout<<"Caught std::system_error, what(): " << err.what()<<std::endl;
+    } catch (const std::system_error& err) {
+      std::cout << "Caught std::system_error, what(): " << err.what() << std::endl;
     }
-    std::this_thread::sleep_for(6s);
   }
 }

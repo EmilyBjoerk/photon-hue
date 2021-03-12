@@ -11,14 +11,19 @@ struct schedule_point {
   real ct;
   real lum;
 };
+std::ostream &operator<<(std::ostream &os, const schedule_point &p);
 
-schedule_point operator+(const schedule_point& l, const schedule_point& r);
-schedule_point operator-(const schedule_point& l, const schedule_point& r);
-schedule_point operator*(const schedule_point& l, real r);
-std::ostream& operator<<(std::ostream& os, const schedule_point& p);
+struct schedule_override {
+  real start_hour;
+  real end_hour;
+  int light_id;
+  real ct;
+  real lum;
+};
 
-// Linearly interpolate in a 24 hour schedule defined by a vector of schedule points.
-// Will handle wraparound of the schedule so it's a perfectly looping schedule
-schedule_point schedule_lerp(const std::vector<schedule_point>& schedule, real t);
+// Computes the scheduled colour temperature and luminosity for the current time
+// of day
+schedule_point schedule_now(const std::vector<schedule_point> &sched, const std::vector<schedule_override> &ovr,
+                            int light);
 
 #endif
