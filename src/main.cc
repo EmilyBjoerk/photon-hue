@@ -74,18 +74,22 @@ int main() {
   auto bridge = find_bridge();
 
   while (true) {
-    auto t = std::time(nullptr);
-    auto* tm = std::localtime(&t);
-    auto day_hour = tm->tm_hour + tm->tm_min / real{60};
-    auto point = schedule_lerp(schedule, day_hour);
+    try {
+      auto t = std::time(nullptr);
+      auto* tm = std::localtime(&t);
+      auto day_hour = tm->tm_hour + tm->tm_min / real{60};
+      auto point = schedule_lerp(schedule, day_hour);
 
-    for (auto& light_ref : bridge.getAllLights()) {
-      auto& light = light_ref.get();
-      if (light.isOn()) {
-        light.setBrightness(c_max_brightness * point.lum);
-        light.setColorTemperature(light.KelvinToMired(point.ct));
+      for (auto& light_ref : bridge.getAllLights()) {
+	auto& light = light_ref.get();
+	if (light.isOn()) {
+	  light.setBrightness(c_max_brightness * point.lum);
+	  light.setColorTemperature(light.KelvinToMired(point.ct));
+	}
       }
+    } catch (const std::system_error& err){
+      std::cout<<"Caught std::system_error, what(): " << err.what()<<std::endl;
     }
-    std::this_thread::sleep_for(5s);
+    std::this_thread::sleep_for(6s);
   }
 }
