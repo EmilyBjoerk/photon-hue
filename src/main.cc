@@ -1,5 +1,6 @@
 #include <chrono>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 #include "hueplusplus/Bridge.h"
@@ -80,20 +81,40 @@ int main() {
   auto bridge = find_bridge();
   std::cout << "Bridge connected!" << std::endl;
   auto& lights = bridge.lights();
-  lights.setRefreshDuration(3s);
+  lights.setRefreshDuration(hueplusplus::c_refreshNever);
+
+  constexpr auto c_scan_delay = 500ms;
+  constexpr auto c_schedule_delay = 30s;
+  auto last_schedule_update = std::chrono::system_clock::now();
+
+  std::unordered_set<int> enabled_lights;
 
   while (true) {
     try {
-      std::this_thread::sleep_for(1s);
+      std::this_thread::sleep_for(c_scan_delay);
+
+      const auto now = std::chrono::system_clock::now();
+      lights.refresh();
+
       for (auto& light : lights.getAll()) {
         if (light.isOn()) {
-          auto point = schedule_now(schedule, sched_ovr, light.getId());
-          light
-              .transaction()                                 //
-              .setBrightness(c_max_brightness * point.lum)   //
-              .setColorTemperature(kelvinToMired(point.ct))  //
-              .commit();
+          if (enabled_lights.count(light.getId()) == 0 ||    // Freshly turned on
+              now - last_schedule_update > c_schedule_delay  // Or schedule update
+          ) {
+            auto point = schedule_now(schedule, sched_ovr, light.getId());
+            light
+                .transaction()                                 //
+                .setBrightness(c_max_brightness * point.lum)   //
+                .setColorTemperature(kelvinToMired(point.ct))  //
+                .commit();
+            enabled_lights.insert(light.getId());
+          }
+        } else {
+          enabled_lights.erase(light.getId());
         }
+      }
+      if (now - last_schedule_update > c_schedule_delay) {
+        last_schedule_update = now;
       }
     } catch (const std::system_error& err) {
       std::cout << "Caught std::system_error, what(): " << err.what() << std::endl;
